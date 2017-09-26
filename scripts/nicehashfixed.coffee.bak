@@ -1,0 +1,50 @@
+cronJob = require('cron').CronJob
+
+envelope = room: "#mining"
+date = new Date();
+yyyy = date.getFullYear();
+mm = ("0"+ (date.getMonth() + 1)).slice(-2);
+dd = ("0"+ date.getDate()).slice(-2);
+hh = ("0"+ date.getHours()).slice(-2);
+mi = ("0"+ date.getMinutes()).slice(-2);
+now = yyyy + '/' + mm + '/' + dd + ' ' + hh + ':' + mi
+
+coins =
+  "Equihash":
+    "url": "https://old.nicehash.com/fixedprice?a=24&l=0&ws=0.01"
+    "threshold": 0.85
+    "coinname": "zcash"
+  "X11":
+    "url": "https://old.nicehash.com/fixedprice?a=3&l=0&ws=0.01"
+    "threshold": 2
+    "coinname": "dash"
+  "Lyra2REv2":
+    "url": "https://old.nicehash.com/fixedprice?a=14&l=0&ws=0.04"
+    "threshold": 0.0080
+    "coinname": "monacoin"
+  "DaggerHashimoto":
+    "url": "https://old.nicehash.com/fixedprice?a=20&l=0&ws=0.1"
+    "threshold": 0.012
+    "coinname": "eth"
+
+module.exports = (robot) ->
+  robot.respond /now/i, (msg) ->
+    for algorithm, info of coins
+      send(robot, algorithm, info, true)
+  new cronJob('* * * * *', () ->
+    for algorithm, info of coins
+      send(robot, algorithm, info, false)
+  ).start()
+
+send = (robot, algorithm, info, isForce) ->
+  basemessage = algorithm + '(' + info.coinname + ') '
+
+  http = robot.http(info.url).get()
+  http (err, res, body) ->
+    dayBtc = parseFloat(body)
+    if info.threshold > parseFloat(dayBtc)
+      message = '@here ' + dayBtc
+      robot.send envelope, basemessage + message + 'btc'
+    else if true == isForce
+      message = dayBtc
+      robot.send envelope, basemessage + message + 'btc'
